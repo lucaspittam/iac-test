@@ -1,0 +1,100 @@
+
+name: 'Create_and_Provision'
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  Terraform:
+    name: 'Terraform'
+    runs-on: self-hosted
+    environment: production
+
+    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
+    defaults:
+      run:
+        working-directory: ./terraform
+        shell: bash
+
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+        
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: '${{ secrets.AWS_ACCESS_KEY_ID }}'
+        aws-secret-access-key: '${{ secrets.AWS_SECRET_ACCESS_KEY }}'
+        aws-region: '${{ secrets.AWS_REGION }}'
+
+    # Initialize a new or existing Terraform working directory
+    - name: Terraform Init
+      run: terraform init
+      
+    
+   # Destroy existing infrastructure (If there is any)   
+    - name: Terraform Destroy
+      run: terraform destroy -auto-approve -input=false  
+      
+      
+      # validate config plan
+    - name: Terraform Validate
+      run: terraform validate
+
+    # Generates an execution plan for Terraform
+    - name: Terraform Plan
+      id: plan
+      run: terraform plan -input=false
+
+    # On push to "main", build or change infrastructure according to Terraform config files  
+    - name: Terraform Apply
+      id: apply
+      if: steps.plan.outcome == 'success'
+      run: terraform apply -auto-approve -input=false
+
+   # - name: Run Ansible Playbook
+   #   uses: saubermacherag/ansible-playbook-docker-action@v1.4
+   #   with:
+   #     playbookName: 'ansible/nginx.yml'
+   #     inventoryFile: 'ansible/inventory.yaml'
+   #     keyFile: 'ansible/ssh-key.pem'
+   #     verbosity: "vvvv"
+   #   env:
+    #    ANSIBLE_HOST_KEY_CHECKING: 'false'
+     #   ANSIBLE_DEPRECATION_WARNINGS: 'false' 
+     
+     
+    - name: Sleep Action
+  # You may pin to the exact commit or the version.
+  # uses: juliangruber/sleep-action@61b118a54bde77a381ddb5190a0d13ee2d056410
+      uses: juliangruber/sleep-action@v1.0.1
+      with:
+    # A time period as ms or string (100, 10s, 1m)
+        time: 10s
+  
+ 
+    - name: Run playbook
+      uses: dawidd6/action-ansible-playbook@v2
+      if: steps.apply.outcome == 'success'
+      with:
+           # playbook filepath
+          playbook: nginx.yml
+          # Optional, directory where playbooks live
+          directory: ./ansible
+          # Optional, SSH private key
+          key: ssh-key.pem
+          options: |
+            --inventory inventory.yaml
+            --verbose
