@@ -1,0 +1,14 @@
+Terraform_server1:
+ hosts:
+   ${ip1}
+   ${ip2} 
+ vars:
+   ansible_user: ubuntu
+   ansible_ssh_private_key_file: ${ssh_keyfile}
+
+Terraform_server2:
+ hosts:
+   ${ip1}
+ vars:
+   ansible_user: ubuntu
+   ansible_ssh_private_key_file: ${ssh_keyfile}

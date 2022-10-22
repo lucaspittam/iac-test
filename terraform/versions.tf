@@ -5,7 +5,7 @@ terraform {
       organization = "Training1997"
 
       workspaces {
-        name = "Arctiq-iac-Mission"
+        name = "iac-test"
       }
     }
   
